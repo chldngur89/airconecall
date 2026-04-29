@@ -11,7 +11,12 @@ export function AppShell({ children }: AppShellProps) {
   return (
     <div className="app-shell-page">
       <div className="app-shell-device">
-        <div className="app-shell-scroll flex min-h-0 flex-1 flex-col">{children}</div>
+        <div
+          id="app-shell-scroll"
+          className="app-shell-scroll flex min-h-0 flex-1 flex-col"
+        >
+          {children}
+        </div>
       </div>
     </div>
   );

@@ -1,9 +1,16 @@
-import { defineConfig } from 'vite'
-import path from 'path'
+import fs from 'node:fs'
+import path from 'node:path'
+import { defineConfig, loadEnv } from 'vite'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
-
+import { buildSchemaOrgGraph } from './src/seo/jsonLdGraph'
+import {
+  GEO_REGION_META,
+  KEYWORDS_META,
+  META_DESCRIPTION,
+  META_TITLE,
+} from './src/seo/siteContent'
 
 function figmaAssetResolver() {
   return {
@@ -17,19 +24,91 @@ function figmaAssetResolver() {
   }
 }
 
-export default defineConfig({
+function escapeJsonForScript(json: string) {
+  return json.replace(/</g, '\\u003c')
+}
+
+function seoInjectPlugin(siteOrigin: string) {
+  const jsonLd = escapeJsonForScript(JSON.stringify(buildSchemaOrgGraph(siteOrigin)))
+  const lastmod = new Date().toISOString().slice(0, 10)
+
+  return {
+    name: 'aircone-seo',
+    transformIndexHtml(html: string) {
+      return html
+        .replace(/%SITE_ORIGIN%/g, siteOrigin)
+        .replace(/%META_TITLE%/g, META_TITLE)
+        .replace(/%META_DESCRIPTION%/g, META_DESCRIPTION)
+        .replace(/%KEYWORDS%/g, KEYWORDS_META)
+        .replace(/%GEO_REGION%/g, GEO_REGION_META)
+        .replace('%JSON_LD%', jsonLd)
+    },
+    closeBundle() {
+      const dir = path.resolve(__dirname, 'dist')
+      if (!fs.existsSync(dir)) return
+      let host = ''
+      try {
+        host = new URL(siteOrigin).host
+      } catch {
+        host = ''
+      }
+      fs.writeFileSync(
+        path.join(dir, 'robots.txt'),
+        [
+          '# 에어컨콜',
+          'User-agent: *',
+          'Allow: /',
+          host ? `Host: ${host}` : '',
+          '',
+          `Sitemap: ${siteOrigin}/sitemap.xml`,
+          '',
+        ]
+          .filter(Boolean)
+          .join('\n'),
+      )
+      fs.writeFileSync(
+        path.join(dir, 'sitemap.xml'),
+        `<?xml version="1.0" encoding="UTF-8"?>\n` +
+          `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +
+          `  <url>\n` +
+          `    <loc>${siteOrigin}/</loc>\n` +
+          `    <lastmod>${lastmod}</lastmod>\n` +
+          `    <changefreq>weekly</changefreq>\n` +
+          `    <priority>1.0</priority>\n` +
+          `  </url>\n` +
+          `</urlset>\n`,
+      )
+    },
+  }
+}
+
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), '')
+  const siteOrigin = (env.VITE_SEO_ORIGIN || 'http://localhost:5173').replace(/\/$/, '')
+
+  return {
   plugins: [
     figmaAssetResolver(),
     react(),
     tailwindcss(),
+    seoInjectPlugin(siteOrigin),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['pwa-192.png', 'pwa-512.png', 'favicon.svg'],
+      includeAssets: [
+        'pwa-192.png',
+        'pwa-512.png',
+        'favicon-16.png',
+        'favicon-32.png',
+        'apple-touch-icon.png',
+        'branding/icon-app.png',
+        'branding/icon-mark.png',
+        'favicon.svg',
+      ],
       manifest: {
         id: '/',
         name: '에어컨콜',
         short_name: '에어컨콜',
-        description: '고양·파주·포천 긴급 에어컨 매칭 · 에어컨콜',
+        description: META_DESCRIPTION.slice(0, 110),
         theme_color: '#2563eb',
         background_color: '#f9fafb',
         display: 'standalone',
@@ -54,7 +133,7 @@ export default defineConfig({
         ],
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2,xml}'],
       },
     }),
   ],
@@ -65,4 +144,5 @@ export default defineConfig({
   },
 
   assetsInclude: ['**/*.svg', '**/*.csv'],
+}
 })

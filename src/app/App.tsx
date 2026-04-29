@@ -1,7 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useLayoutEffect } from 'react';
 import { Clock, MapPin, Wrench, CreditCard, Shield, CheckCircle2, ArrowRight, User } from 'lucide-react';
 import { submitRequest } from '@/lib/api';
 import { AppShell } from '@/app/components/AppShell';
+import { FAQ_ITEMS } from '@/seo/siteContent';
+import { scrollAppToTop } from '@/lib/scrollApp';
 
 /** 1차 15분 거리 검색(초) → 그다음 30분 거리 검색 시작 시점까지의 경과(초) */
 const MATCH_SWITCH_TO_WIDE_AT = 15;
@@ -16,6 +18,10 @@ export default function App() {
     issue: '',
     urgency: 'now'
   });
+
+  useLayoutEffect(() => {
+    scrollAppToTop();
+  }, [step]);
 
   return (
     <AppShell>
@@ -44,17 +50,26 @@ function MatchingScreen({
   onCancel: () => void;
 }) {
   return (
-    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-slate-50/90">
-      {/* Header */}
-      <div className="flex-shrink-0 border-b border-gray-200/80 bg-white/95 px-4 py-3 shadow-sm backdrop-blur-sm md:px-6 md:py-4">
-        <div className="flex w-full items-center justify-between">
+    <div className="flex w-full min-h-full flex-col bg-slate-50/90">
+      {/* Header — 스크롤 시에도 상단 고정 */}
+      <div className="sticky top-0 z-20 flex-shrink-0 border-b border-gray-200/80 bg-white/95 px-4 py-3 shadow-sm backdrop-blur-sm md:px-6 md:py-4">
+        <div className="flex w-full items-center justify-between gap-3">
           <h1 className="text-base font-semibold md:text-lg">기사님 찾는 중</h1>
-          <button
-            onClick={onCancel}
-            className="text-sm text-gray-600 hover:text-gray-900"
-          >
-            취소
-          </button>
+          <div className="flex shrink-0 items-center gap-3">
+            <span className="inline-flex shrink-0 rounded-xl border border-gray-300/95 bg-neutral-50 p-[5px] shadow-sm">
+              <img
+                src="/branding/icon-mark.png"
+                alt=""
+                className="h-6 max-w-[92px] w-auto rounded-lg object-contain opacity-95 sm:h-7 sm:max-w-[108px]"
+              />
+            </span>
+            <button
+              onClick={onCancel}
+              className="text-sm text-gray-600 hover:text-gray-900"
+            >
+              취소
+            </button>
+          </div>
         </div>
         {/* Progress strip: keeps map block free for 지도 영역 */}
         <div className="mt-3">
@@ -73,8 +88,8 @@ function MatchingScreen({
         </div>
       </div>
 
-      {/* Map Area — 메인: 최소 높이 보장 + 남은 공간 전부 */}
-      <div className="relative min-h-[min(58vh,520px)] flex-1 basis-0 bg-gradient-to-br from-sky-100 via-blue-50 to-emerald-50">
+      {/* Map Area — 문서 흐름으로 최소 높이만 보장(아래까지 스크롤 가능) */}
+      <div className="relative min-h-[min(52vh,480px)] w-full shrink-0 bg-gradient-to-br from-sky-100 via-blue-50 to-emerald-50">
         <div className="absolute inset-0">
           {/* Mock Map Grid */}
           <svg className="h-full w-full opacity-25">
@@ -109,7 +124,7 @@ function MatchingScreen({
           {/* User Location (Center) */}
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="relative">
-              <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center shadow-lg border-4 border-white">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl border-4 border-white bg-blue-600 shadow-lg">
                 <User className="w-6 h-6 text-white" />
               </div>
               <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap text-sm bg-white px-3 py-1 rounded-full shadow-md">
@@ -128,65 +143,65 @@ function MatchingScreen({
         </div>
       </div>
 
-      {/* Bottom sheet: 전체 높이 상한 + 내부만 스크롤 (고정 높이로 iOS 포함 동작 안정화) */}
-      <div className="flex max-h-[min(52vh,30rem)] w-full shrink-0 flex-col overflow-hidden rounded-t-[1.35rem] border-t border-gray-100 bg-white/98 shadow-[0_-10px_40px_-12px_rgb(15_23_42/0.15)]">
-        <div className="matching-bottom-scroll min-h-0 flex-1 overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch] touch-pan-y">
-          <div className="px-4 pt-3 md:px-6 md:pt-4">
-            <div className="mx-auto mb-3 h-1 w-10 shrink-0 rounded-full bg-gray-200/90 md:hidden" aria-hidden />
+      {/* 하단 카드 + 매칭 취소: 한 열로 이어져 전체 화면 스크롤로 도달 */}
+      <div className="w-full shrink-0 rounded-t-[1.35rem] border-t border-gray-100 bg-white/98 shadow-[0_-10px_40px_-12px_rgb(15_23_42/0.15)]">
+        <div className="px-4 pt-3 md:px-6 md:pt-4">
+          <div className="mx-auto mb-3 h-1 w-10 shrink-0 rounded-full bg-gray-200/90 md:hidden" aria-hidden />
 
-            <h2 className="mb-2 text-lg font-semibold leading-snug text-gray-900 md:text-xl">
-              {stage} 거리 내 기사님을 찾고 있습니다
-            </h2>
-            <p className="mb-3 flex items-start gap-2 text-xs text-gray-600 md:text-sm">
-              <Shield className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" />
-              <span>
+          <h2 className="mb-2 text-lg font-semibold leading-snug text-gray-900 md:text-xl">
+            {stage} 거리 내 기사님을 찾고 있습니다
+          </h2>
+          <p className="mb-3 flex items-start gap-2 text-xs text-gray-600 md:text-sm">
+            <Shield className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" />
+            <span>
               등록된 기사님만 연결합니다.
               {stage === '15분'
                 ? ' 주변 가능 인력을 확인하는 중이에요.'
                 : ' 조금만 기다려 주세요.'}
-              </span>
+            </span>
+          </p>
+
+          <div className="mb-4 grid grid-cols-3 gap-2 rounded-2xl border border-blue-100/70 bg-blue-50/90 p-3 text-center text-[11px] shadow-sm md:gap-3 md:p-4 md:text-sm">
+            <div>
+              <div className="mb-0.5 text-[10px] text-gray-500 md:text-xs">검색</div>
+              <div className="font-semibold text-blue-600">{stage}</div>
+            </div>
+            <div className="border-x border-blue-100/80">
+              <div className="mb-0.5 text-[10px] text-gray-500 md:text-xs">에어컨</div>
+              <div className="font-medium text-gray-900">{formData.acType || '벽걸이'}</div>
+            </div>
+            <div>
+              <div className="mb-0.5 text-[10px] text-gray-500 md:text-xs">출장비</div>
+              <div className="font-semibold text-gray-900">3만원</div>
+            </div>
+          </div>
+
+          <div className="mb-4 space-y-2.5 rounded-2xl border border-gray-100 bg-slate-50/90 p-4 text-xs leading-relaxed text-gray-600 md:text-[13px]">
+            <p>
+              서비스 지역은{' '}
+              <span className="font-medium text-gray-700">경기 고양시·파주시·포천시</span>이며, 가정용 벽걸이·스탠드·2in1 긴급 점검·수리만 가능합니다.
             </p>
-
-            <div className="mb-4 grid grid-cols-3 gap-2 rounded-2xl border border-blue-100/70 bg-blue-50/90 p-3 text-center text-[11px] shadow-sm md:gap-3 md:p-4 md:text-sm">
-              <div>
-                <div className="mb-0.5 text-[10px] text-gray-500 md:text-xs">검색</div>
-                <div className="font-semibold text-blue-600">{stage}</div>
-              </div>
-              <div className="border-x border-blue-100/80">
-                <div className="mb-0.5 text-[10px] text-gray-500 md:text-xs">에어컨</div>
-                <div className="font-medium text-gray-900">{formData.acType || '벽걸이'}</div>
-              </div>
-              <div>
-                <div className="mb-0.5 text-[10px] text-gray-500 md:text-xs">출장비</div>
-                <div className="font-semibold text-gray-900">3만원</div>
-              </div>
-            </div>
-
-            <div className="pb-4 space-y-2.5 rounded-2xl border border-gray-100 bg-slate-50/90 p-4 text-xs leading-relaxed text-gray-600 md:text-[13px]">
-              <p>
-                서비스 지역은 <span className="font-medium text-gray-700">경기 고양시·파주시·포천시</span>이며, 가정용 벽걸이·스탠드·2in1 긴급 점검·수리만 가능합니다.
-              </p>
-              <p>
-                현장에서 추가 비용이 생기면 <span className="font-medium text-gray-800">고객님 동의 후</span>에만 진행됩니다.
-              </p>
-              <p className="text-gray-500">
-                매칭이 길어질 경우 알림 문자로 상태를 안내드릴 수 있어요. (서비스 정책에 따라 변경될 수 있음)
-              </p>
-              <p className="pb-1 text-center text-[10px] text-gray-400 md:text-[11px]">
-                영역 안을 위·아래로 스크롤해 주세요
-              </p>
-            </div>
+            <p>
+              현장에서 추가 비용이 생기면{' '}
+              <span className="font-medium text-gray-800">고객님 동의 후</span>에만 진행됩니다.
+            </p>
+            <p className="text-gray-500">
+              매칭이 길어질 경우 알림 문자로 상태를 안내드릴 수 있어요. (서비스 정책에 따라 변경될 수 있음)
+            </p>
           </div>
         </div>
 
-        <div className="flex-shrink-0 border-t border-gray-100 bg-white px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom,0px))] md:px-6">
+        <div className="border-t border-gray-100 bg-white px-4 py-4 pb-[max(1.25rem,env(safe-area-inset-bottom,0px))] md:px-6">
           <button
             type="button"
             onClick={onCancel}
-            className="w-full rounded-2xl bg-slate-100 py-3 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-200 md:py-3.5"
+            className="w-full rounded-2xl bg-slate-100 py-3.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-200"
           >
             매칭 취소
           </button>
+          <p className="mt-3 text-center text-[10px] text-gray-400 md:text-[11px]">
+            지도 화면에서 아래로 스크롤하면 이 버튼까지 내려올 수 있어요
+          </p>
         </div>
       </div>
     </div>
@@ -195,16 +210,25 @@ function MatchingScreen({
 
 function HomePage({ onRequestClick }: { onRequestClick: () => void }) {
   return (
-    <>
+    <main id="primary" lang="ko" className="min-w-0">
       {/* Hero Section */}
       <div className="bg-gradient-to-br from-blue-600 via-blue-600 to-blue-800 text-white">
         <div className="w-full px-6 py-12">
           <div className="mb-8">
+            <div className="mb-6 flex justify-center md:justify-start">
+              <div className="inline-flex rounded-2xl border border-white/65 bg-neutral-50 p-3 shadow-lg shadow-black/15 ring-[0.5px] ring-black/[0.08] md:rounded-[1.35rem] md:p-[0.875rem]">
+                <img
+                  src="/branding/icon-mark.png"
+                  alt="에어컨콜"
+                  className="h-14 w-auto max-w-[200px] rounded-lg object-contain sm:h-16 sm:max-w-[220px]"
+                />
+              </div>
+            </div>
             <div className="inline-flex items-center gap-2 bg-white/20 rounded-full px-4 py-2 mb-4">
               <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
               <span className="text-sm">고양·파주·포천 접수 가능</span>
             </div>
-            <h1 className="text-3xl mb-4">
+            <h1 id="hero-heading" className="text-3xl mb-4">
               에어컨 긴급 고장?<br />
               가까운 기사님을 바로 연결해 드려요
             </h1>
@@ -245,7 +269,7 @@ function HomePage({ onRequestClick }: { onRequestClick: () => void }) {
 
         <div className="space-y-6">
           <div className="flex gap-4">
-            <div className="flex-shrink-0 w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center text-blue-600">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-blue-100/90 bg-blue-50 text-base font-semibold text-blue-600 shadow-sm">
               1
             </div>
             <div className="flex-1">
@@ -255,7 +279,7 @@ function HomePage({ onRequestClick }: { onRequestClick: () => void }) {
           </div>
 
           <div className="flex gap-4">
-            <div className="flex-shrink-0 w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center text-blue-600">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-blue-100/90 bg-blue-50 text-base font-semibold text-blue-600 shadow-sm">
               2
             </div>
             <div className="flex-1">
@@ -265,7 +289,7 @@ function HomePage({ onRequestClick }: { onRequestClick: () => void }) {
           </div>
 
           <div className="flex gap-4">
-            <div className="flex-shrink-0 w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center text-blue-600">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-blue-100/90 bg-blue-50 text-base font-semibold text-blue-600 shadow-sm">
               3
             </div>
             <div className="flex-1">
@@ -277,7 +301,7 @@ function HomePage({ onRequestClick }: { onRequestClick: () => void }) {
           </div>
 
           <div className="flex gap-4">
-            <div className="flex-shrink-0 w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center text-blue-600">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-blue-100/90 bg-blue-50 text-base font-semibold text-blue-600 shadow-sm">
               4
             </div>
             <div className="flex-1">
@@ -293,35 +317,35 @@ function HomePage({ onRequestClick }: { onRequestClick: () => void }) {
         <div className="w-full px-6 py-12">
           <h2 className="text-2xl mb-8 text-center">에어컨콜의 장점</h2>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="rounded-3xl border border-gray-100 bg-slate-50/90 p-6 shadow-sm">
-              <Clock className="w-8 h-8 text-blue-600 mb-3" />
-              <h3 className="mb-2">긴급 우선</h3>
-              <p className="text-sm text-gray-600">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4">
+            <div className="flex aspect-square flex-col items-start justify-start rounded-2xl border border-gray-200/85 bg-[#f7f8f9] p-4 text-left shadow-sm sm:rounded-[1.25rem] sm:p-5">
+              <Clock className="mb-3 h-8 w-8 shrink-0 text-blue-600" strokeWidth={1.75} />
+              <h3 className="mb-2 font-semibold text-gray-900">긴급 우선</h3>
+              <p className="text-sm leading-snug text-gray-500">
                 긴급 요청을<br />먼저 받습니다
               </p>
             </div>
 
-            <div className="rounded-3xl border border-gray-100 bg-slate-50/90 p-6 shadow-sm">
-              <Shield className="w-8 h-8 text-blue-600 mb-3" />
-              <h3 className="mb-2">검증 파트너</h3>
-              <p className="text-sm text-gray-600">
+            <div className="flex aspect-square flex-col items-start justify-start rounded-2xl border border-gray-200/85 bg-[#f7f8f9] p-4 text-left shadow-sm sm:rounded-[1.25rem] sm:p-5">
+              <Shield className="mb-3 h-8 w-8 shrink-0 text-blue-600" strokeWidth={1.75} />
+              <h3 className="mb-2 font-semibold text-gray-900">검증 파트너</h3>
+              <p className="text-sm leading-snug text-gray-500">
                 사전 등록된<br />기사님만 연결
               </p>
             </div>
 
-            <div className="rounded-3xl border border-gray-100 bg-slate-50/90 p-6 shadow-sm">
-              <CreditCard className="w-8 h-8 text-blue-600 mb-3" />
-              <h3 className="mb-2">투명한 금액</h3>
-              <p className="text-sm text-gray-600">
+            <div className="flex aspect-square flex-col items-start justify-start rounded-2xl border border-gray-200/85 bg-[#f7f8f9] p-4 text-left shadow-sm sm:rounded-[1.25rem] sm:p-5">
+              <CreditCard className="mb-3 h-8 w-8 shrink-0 text-blue-600" strokeWidth={1.75} />
+              <h3 className="mb-2 font-semibold text-gray-900">투명한 금액</h3>
+              <p className="text-sm leading-snug text-gray-500">
                 출장비·평균 작업비<br />미리 안내
               </p>
             </div>
 
-            <div className="rounded-3xl border border-gray-100 bg-slate-50/90 p-6 shadow-sm">
-              <Wrench className="w-8 h-8 text-blue-600 mb-3" />
-              <h3 className="mb-2">야간·주말</h3>
-              <p className="text-sm text-gray-600">
+            <div className="flex aspect-square flex-col items-start justify-start rounded-2xl border border-gray-200/85 bg-[#f7f8f9] p-4 text-left shadow-sm sm:rounded-[1.25rem] sm:p-5">
+              <Wrench className="mb-3 h-8 w-8 shrink-0 text-blue-600" strokeWidth={1.75} />
+              <h3 className="mb-2 font-semibold text-gray-900">야간·주말</h3>
+              <p className="text-sm leading-snug text-gray-500">
                 심야·주말도<br />접수 가능
               </p>
             </div>
@@ -386,6 +410,30 @@ function HomePage({ onRequestClick }: { onRequestClick: () => void }) {
         </div>
       </div>
 
+      {/* FAQ — AEO: 화면 본문·JSON-LD FAQPage(siteContent)·동일 카피 */}
+      <section
+        id="faq"
+        className="scroll-mt-24 border-y border-blue-100/80 bg-blue-50/40"
+        aria-labelledby="faq-heading"
+      >
+        <div className="w-full px-6 py-12">
+          <h2 id="faq-heading" className="text-2xl mb-2 text-center">
+            자주 묻는 질문
+          </h2>
+          <p className="mb-8 text-center text-sm text-gray-600">
+            고양·파주·포천 에어컨 긴급 매칭과 비용·접수에 관한 안내입니다
+          </p>
+          <dl className="mx-auto max-w-2xl space-y-8">
+            {FAQ_ITEMS.map((item, i) => (
+              <div key={i} className="border-b border-gray-200/80 pb-8 last:border-0 last:pb-0">
+                <dt className="font-semibold text-gray-900">{item.question}</dt>
+                <dd className="mt-2 text-sm leading-relaxed text-gray-600">{item.answer}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      </section>
+
       {/* CTA */}
       <div className="bg-gradient-to-br from-blue-600 via-blue-700 to-blue-900 text-white">
         <div className="w-full px-6 py-12 text-center">
@@ -403,7 +451,7 @@ function HomePage({ onRequestClick }: { onRequestClick: () => void }) {
       </div>
 
       {/* Footer */}
-      <div className="bg-slate-900 text-gray-400">
+      <footer className="bg-slate-900 text-gray-400">
         <div className="w-full px-6 py-8">
           <div className="mb-6">
             <h3 className="mb-1 text-lg text-white">에어컨콜</h3>
@@ -431,8 +479,8 @@ function HomePage({ onRequestClick }: { onRequestClick: () => void }) {
             <p>© 2026 에어컨콜. All rights reserved.</p>
           </div>
         </div>
-      </div>
-    </>
+      </footer>
+    </main>
   );
 }
 
@@ -448,6 +496,10 @@ function RequestPage({
   const [submitted, setSubmitted] = useState(false);
   const [matchingStage, setMatchingStage] = useState<'searching15' | 'searching30' | 'waitlist' | 'matched'>('searching15');
   const [elapsedTime, setElapsedTime] = useState(0);
+
+  useLayoutEffect(() => {
+    scrollAppToTop();
+  }, [submitted, matchingStage]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -490,8 +542,8 @@ function RequestPage({
     return (
       <div className="flex min-h-full flex-1 items-center justify-center bg-slate-50/80 p-6">
         <div className="w-full rounded-3xl border border-gray-100 bg-white p-8 text-center shadow-xl shadow-slate-900/10">
-          <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
-            <Clock className="w-8 h-8 text-blue-600 animate-pulse" />
+          <div className="mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-2xl border border-blue-100/90 bg-blue-50 shadow-sm">
+            <Clock className="h-8 w-8 animate-pulse text-blue-600" />
           </div>
           <h2 className="text-2xl mb-4">접수되었습니다</h2>
           <p className="mb-8 text-gray-600">
@@ -548,10 +600,17 @@ function RequestPage({
     <div className="flex min-h-full min-h-0 flex-1 flex-col bg-slate-50/80">
       {/* Header */}
       <div className="sticky top-0 z-10 border-b border-gray-200/80 bg-white/95 shadow-sm backdrop-blur-sm">
-        <div className="w-full px-6 py-4">
+        <div className="flex w-full items-center justify-between gap-3 px-6 py-4">
           <button onClick={onBack} className="text-gray-600 hover:text-gray-900">
             ← 뒤로
           </button>
+          <span className="inline-flex shrink-0 rounded-xl border border-gray-200 bg-neutral-50 p-[5px] shadow-sm">
+            <img
+              src="/branding/icon-mark.png"
+              alt=""
+              className="h-7 max-w-[110px] w-auto rounded-lg object-contain opacity-95"
+            />
+          </span>
         </div>
       </div>
 
