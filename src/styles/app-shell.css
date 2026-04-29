@@ -1,3 +1,21 @@
+/* Matching map: 검색 반경 원 “호흡” 애니메이션 */
+@keyframes match-ring-breathe {
+  0%,
+  100% {
+    transform: scale(0.92);
+    opacity: 0.72;
+  }
+  50% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+}
+
+.match-ring-breathe {
+  animation: match-ring-breathe 2.1s ease-in-out infinite;
+  transform-origin: center center;
+}
+
 /* Mobile app shell: full height, safe areas, tap highlight */
 html {
   -webkit-tap-highlight-color: transparent;

@@ -29,7 +29,7 @@ export default defineConfig({
         id: '/',
         name: '에어컨콜',
         short_name: '에어컨콜',
-        description: '긴급 에어컨 기사 매칭',
+        description: '고양·파주·포천 긴급 에어컨 매칭 · 에어컨콜',
         theme_color: '#2563eb',
         background_color: '#f9fafb',
         display: 'standalone',

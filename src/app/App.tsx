@@ -3,6 +3,11 @@ import { Clock, MapPin, Wrench, CreditCard, Shield, CheckCircle2, ArrowRight, Us
 import { submitRequest } from '@/lib/api';
 import { AppShell } from '@/app/components/AppShell';
 
+/** 1차 15분 거리 검색(초) → 그다음 30분 거리 검색 시작 시점까지의 경과(초) */
+const MATCH_SWITCH_TO_WIDE_AT = 15;
+/** 접수 완료(대기) 화면으로 전환까지 총 경과(초) */
+const MATCH_END_AT = 30;
+
 export default function App() {
   const [step, setStep] = useState<'home' | 'request'>('home');
   const [formData, setFormData] = useState({
@@ -60,7 +65,9 @@ function MatchingScreen({
           <div className="h-1.5 w-full rounded-full bg-gray-200">
             <div
               className="h-1.5 rounded-full bg-blue-600 transition-all duration-1000"
-              style={{ width: `${Math.min((elapsedTime / 40) * 100, 100)}%` }}
+              style={{
+                width: `${Math.min((elapsedTime / MATCH_END_AT) * 100, 100)}%`
+              }}
             />
           </div>
         </div>
@@ -87,14 +94,14 @@ function MatchingScreen({
             <line x1="70%" y1="0" x2="70%" y2="100%" stroke="#666" strokeWidth="3"/>
           </svg>
 
-          {/* Search Radius */}
-          <div className="absolute inset-0 flex items-center justify-center">
+          {/* Search Radius — 크기 단계 전환 + 호흡(스케일) 반복 */}
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
             <div
-              className="rounded-full border-4 border-blue-400 bg-blue-100/20 animate-pulse"
+              aria-hidden
+              className="match-ring-breathe rounded-full border-[3px] border-blue-400/70 bg-blue-100/25 shadow-[0_0_28px_-4px_rgba(59,130,246,0.45)] transition-[width,height] duration-700 ease-out"
               style={{
                 width: stage === '15분' ? '200px' : '320px',
-                height: stage === '15분' ? '200px' : '320px',
-                transition: 'all 1s ease-out'
+                height: stage === '15분' ? '200px' : '320px'
               }}
             />
           </div>
@@ -133,8 +140,10 @@ function MatchingScreen({
             <p className="mb-3 flex items-start gap-2 text-xs text-gray-600 md:text-sm">
               <Shield className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" />
               <span>
-                검증된 기사님만 매칭돼요.
-                {stage === '15분' ? ' 가까운 기사님을 찾는 중이에요.' : ' 조금만 기다려주세요.'}
+              등록된 기사님만 연결합니다.
+              {stage === '15분'
+                ? ' 주변 가능 인력을 확인하는 중이에요.'
+                : ' 조금만 기다려 주세요.'}
               </span>
             </p>
 
@@ -155,7 +164,7 @@ function MatchingScreen({
 
             <div className="pb-4 space-y-2.5 rounded-2xl border border-gray-100 bg-slate-50/90 p-4 text-xs leading-relaxed text-gray-600 md:text-[13px]">
               <p>
-                서비스 지역은 강남·서초·송파이며, 가정용 벽걸이·스탠드·2in1만 대상입니다.
+                서비스 지역은 <span className="font-medium text-gray-700">경기 고양시·파주시·포천시</span>이며, 가정용 벽걸이·스탠드·2in1 긴급 점검·수리만 가능합니다.
               </p>
               <p>
                 현장에서 추가 비용이 생기면 <span className="font-medium text-gray-800">고객님 동의 후</span>에만 진행됩니다.
@@ -193,15 +202,15 @@ function HomePage({ onRequestClick }: { onRequestClick: () => void }) {
           <div className="mb-8">
             <div className="inline-flex items-center gap-2 bg-white/20 rounded-full px-4 py-2 mb-4">
               <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-              <span className="text-sm">지금 바로 이용 가능</span>
+              <span className="text-sm">고양·파주·포천 접수 가능</span>
             </div>
             <h1 className="text-3xl mb-4">
-              에어컨 고장?<br />
-              지금 바로 기사님 연결
+              에어컨 긴급 고장?<br />
+              가까운 기사님을 바로 연결해 드려요
             </h1>
             <p className="text-blue-100 text-lg">
-              늦은 밤에도 빠른 매칭<br />
-              검증된 기사님이 바로 출동
+              등록된 파트너 기사님이<br />
+              고양·파주·포천에서 출동합니다
             </p>
           </div>
 
@@ -209,22 +218,22 @@ function HomePage({ onRequestClick }: { onRequestClick: () => void }) {
             onClick={onRequestClick}
             className="flex w-full items-center justify-center gap-2 rounded-3xl bg-white py-4 text-blue-600 shadow-lg shadow-blue-950/25 transition-colors hover:bg-blue-50"
           >
-            <span className="text-lg">기사님 찾기</span>
+            <span className="text-lg">긴급 기사 매칭</span>
             <ArrowRight className="w-5 h-5" />
           </button>
 
           <div className="mt-8 grid grid-cols-3 gap-4 text-center">
             <div>
               <div className="text-2xl mb-1">5분</div>
-              <div className="text-sm text-blue-200">평균 매칭 시간</div>
+              <div className="text-sm text-blue-200">매칭 대기 시간</div>
             </div>
             <div>
               <div className="text-2xl mb-1">24시간</div>
-              <div className="text-sm text-blue-200">연중무휴</div>
+              <div className="text-sm text-blue-200">접수·상담</div>
             </div>
             <div>
               <div className="text-2xl mb-1">100%</div>
-              <div className="text-sm text-blue-200">검증된 기사</div>
+              <div className="text-sm text-blue-200">검증 파트너</div>
             </div>
           </div>
         </div>
@@ -232,7 +241,7 @@ function HomePage({ onRequestClick }: { onRequestClick: () => void }) {
 
       {/* How It Works */}
       <div className="w-full px-6 py-12">
-        <h2 className="text-2xl mb-8 text-center">이용 방법</h2>
+        <h2 className="text-2xl mb-8 text-center">이렇게 이용해요</h2>
 
         <div className="space-y-6">
           <div className="flex gap-4">
@@ -240,8 +249,8 @@ function HomePage({ onRequestClick }: { onRequestClick: () => void }) {
               1
             </div>
             <div className="flex-1">
-              <h3 className="mb-1">고장 내용 입력</h3>
-              <p className="text-gray-600">위치, 에어컨 종류, 증상을 간단히 입력</p>
+              <h3 className="mb-1">증상·위치 입력</h3>
+              <p className="text-gray-600">방문 지역(고양·파주·포천)과 에어컨 종류, 증상을 적어 주세요</p>
             </div>
           </div>
 
@@ -250,8 +259,8 @@ function HomePage({ onRequestClick }: { onRequestClick: () => void }) {
               2
             </div>
             <div className="flex-1">
-              <h3 className="mb-1">예상 금액 확인</h3>
-              <p className="text-gray-600">평균가 기반 투명한 예상 비용 안내</p>
+              <h3 className="mb-1">예상 비용 확인</h3>
+              <p className="text-gray-600">평균 출장비·작업비 참고 금액을 먼저 안내해 드립니다</p>
             </div>
           </div>
 
@@ -261,7 +270,9 @@ function HomePage({ onRequestClick }: { onRequestClick: () => void }) {
             </div>
             <div className="flex-1">
               <h3 className="mb-1">기사님 매칭</h3>
-              <p className="text-gray-600">근처의 검증된 기사님과 즉시 연결</p>
+              <p className="text-gray-600">
+                가능한 분께 순서대로 연결합니다. (수동 배정으로 시간이 걸릴 수 있어요)
+              </p>
             </div>
           </div>
 
@@ -270,8 +281,8 @@ function HomePage({ onRequestClick }: { onRequestClick: () => void }) {
               4
             </div>
             <div className="flex-1">
-              <h3 className="mb-1">방문 및 수리</h3>
-              <p className="text-gray-600">기사님 방문 후 현장 점검 및 수리 진행</p>
+              <h3 className="mb-1">방문·점검·수리</h3>
+              <p className="text-gray-600">현장 진단 후 필요한 작업만 동의하에 진행합니다</p>
             </div>
           </div>
         </div>
@@ -280,38 +291,38 @@ function HomePage({ onRequestClick }: { onRequestClick: () => void }) {
       {/* Features */}
       <div className="bg-white">
         <div className="w-full px-6 py-12">
-          <h2 className="text-2xl mb-8 text-center">왜 에어컨콜이죠?</h2>
+          <h2 className="text-2xl mb-8 text-center">에어컨콜의 장점</h2>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="rounded-3xl border border-gray-100 bg-slate-50/90 p-6 shadow-sm">
               <Clock className="w-8 h-8 text-blue-600 mb-3" />
-              <h3 className="mb-2">즉시 매칭</h3>
+              <h3 className="mb-2">긴급 우선</h3>
               <p className="text-sm text-gray-600">
-                견적 대기 없이<br />바로 연결
+                긴급 요청을<br />먼저 받습니다
               </p>
             </div>
 
             <div className="rounded-3xl border border-gray-100 bg-slate-50/90 p-6 shadow-sm">
               <Shield className="w-8 h-8 text-blue-600 mb-3" />
-              <h3 className="mb-2">검증된 기사</h3>
+              <h3 className="mb-2">검증 파트너</h3>
               <p className="text-sm text-gray-600">
-                자격증, 경력<br />사전 검증
+                사전 등록된<br />기사님만 연결
               </p>
             </div>
 
             <div className="rounded-3xl border border-gray-100 bg-slate-50/90 p-6 shadow-sm">
               <CreditCard className="w-8 h-8 text-blue-600 mb-3" />
-              <h3 className="mb-2">투명한 가격</h3>
+              <h3 className="mb-2">투명한 금액</h3>
               <p className="text-sm text-gray-600">
-                평균가 기반<br />명확한 안내
+                출장비·평균 작업비<br />미리 안내
               </p>
             </div>
 
             <div className="rounded-3xl border border-gray-100 bg-slate-50/90 p-6 shadow-sm">
               <Wrench className="w-8 h-8 text-blue-600 mb-3" />
-              <h3 className="mb-2">야간 출동</h3>
+              <h3 className="mb-2">야간·주말</h3>
               <p className="text-sm text-gray-600">
-                밤 10시에도<br />긴급 대응
+                심야·주말도<br />접수 가능
               </p>
             </div>
           </div>
@@ -321,30 +332,33 @@ function HomePage({ onRequestClick }: { onRequestClick: () => void }) {
       {/* Pricing */}
       <div className="w-full px-6 py-12">
         <h2 className="text-2xl mb-8 text-center">요금 안내</h2>
+        <p className="-mt-6 mb-8 px-2 text-center text-sm text-gray-500">
+          아래 금액은 참고용이며, 현장 결과에 따라 달라질 수 있습니다
+        </p>
 
         <div className="mb-4 rounded-3xl border border-gray-100 bg-white p-6 shadow-md shadow-slate-900/5">
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg">기본 출장비</h3>
-            <span className="text-2xl text-blue-600">30,000원</span>
+            <h3 className="text-lg">기본 출장비 (참고)</h3>
+            <span className="text-2xl text-blue-600">30,000원~</span>
           </div>
           <div className="space-y-2 text-sm text-gray-600">
             <div className="flex justify-between">
-              <span>평일 주간 (09:00-18:00)</span>
-              <span>기본요금</span>
+              <span>평일 주간 (09:00~18:00)</span>
+              <span>기본 구간</span>
             </div>
             <div className="flex justify-between">
-              <span>평일 야간 (18:00-22:00)</span>
-              <span>+10,000원</span>
+              <span>평일 야간 (18:00~22:00)</span>
+              <span>할증 참고</span>
             </div>
             <div className="flex justify-between">
-              <span>주말/공휴일</span>
-              <span>+15,000원</span>
+              <span>주말·공휴일</span>
+              <span>할증 참고</span>
             </div>
           </div>
         </div>
 
         <div className="rounded-3xl border border-blue-100/80 bg-blue-50/90 p-6 shadow-sm">
-          <h3 className="text-lg mb-3">작업비 (예상)</h3>
+          <h3 className="text-lg mb-3">작업비 참고 구간</h3>
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
               <span className="text-gray-600">에어컨 점검/진단</span>
@@ -366,7 +380,7 @@ function HomePage({ onRequestClick }: { onRequestClick: () => void }) {
           <div className="mt-4 pt-4 border-t border-blue-200">
             <p className="text-sm text-gray-600 flex items-start gap-2">
               <CheckCircle2 className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
-              <span>추가 작업은 고객님 승인 후에만 진행됩니다</span>
+              <span>추가 작업·부품은 반드시 동의 후 진행합니다</span>
             </p>
           </div>
         </div>
@@ -375,15 +389,15 @@ function HomePage({ onRequestClick }: { onRequestClick: () => void }) {
       {/* CTA */}
       <div className="bg-gradient-to-br from-blue-600 via-blue-700 to-blue-900 text-white">
         <div className="w-full px-6 py-12 text-center">
-          <h2 className="text-2xl mb-4">지금 바로 시작하세요</h2>
+          <h2 className="text-2xl mb-4">지금 요청해 보세요</h2>
           <p className="text-blue-100 mb-8">
-            늦은 밤 에어컨 고장도 걱정 없어요
+            고양·파주·포천에서 긴급 에어컨 문제를 접수해 주세요
           </p>
           <button
             onClick={onRequestClick}
             className="w-full rounded-3xl bg-white py-4 text-blue-600 shadow-lg shadow-blue-950/30 transition-colors hover:bg-blue-50"
           >
-            기사님 찾기
+            긴급 기사 매칭
           </button>
         </div>
       </div>
@@ -392,15 +406,28 @@ function HomePage({ onRequestClick }: { onRequestClick: () => void }) {
       <div className="bg-slate-900 text-gray-400">
         <div className="w-full px-6 py-8">
           <div className="mb-6">
-            <h3 className="text-white text-lg mb-2">에어컨콜</h3>
-            <p className="text-sm">긴급 에어컨 기사 매칭 서비스</p>
+            <h3 className="mb-1 text-lg text-white">에어컨콜</h3>
+            <p className="text-sm text-gray-300">긴급 에어컨 출동·기사 매칭</p>
+            <p className="mt-3 text-sm text-gray-300">대표 <span className="text-white">최병성</span></p>
           </div>
-          <div className="text-sm space-y-1">
-            <p>서비스 지역: 서울 강남/서초/송파</p>
-            <p>대상: 가정용 벽걸이/스탠드/2in1 에어컨</p>
-            <p>운영시간: 24시간 연중무휴</p>
+          <div className="space-y-2 text-sm leading-relaxed">
+            <p>
+              <span className="text-gray-500">서비스 지역</span>
+              <br />
+              <span className="text-gray-300">경기 고양시·파주시·포천시</span>
+            </p>
+            <p>
+              <span className="text-gray-500">대상</span>
+              <br />
+              가정용 벽걸이·스탠드·2in1 긴급 점검·수리
+            </p>
+            <p>
+              <span className="text-gray-500">운영</span>
+              <br />
+              연중무휴 접수 (출동·매칭은 현장 사정에 따라 달라질 수 있어요)
+            </p>
           </div>
-          <div className="mt-6 pt-6 border-t border-gray-800 text-xs">
+          <div className="mt-6 border-t border-gray-800 pt-6 text-xs text-gray-500">
             <p>© 2026 에어컨콜. All rights reserved.</p>
           </div>
         </div>
@@ -438,9 +465,9 @@ function RequestPage({
       setElapsedTime(prev => {
         const newTime = prev + 1;
 
-        if (newTime === 20) {
+        if (newTime === MATCH_SWITCH_TO_WIDE_AT) {
           setMatchingStage('searching30');
-        } else if (newTime === 40) {
+        } else if (newTime === MATCH_END_AT) {
           setMatchingStage('waitlist');
         }
 
@@ -466,10 +493,11 @@ function RequestPage({
           <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
             <Clock className="w-8 h-8 text-blue-600 animate-pulse" />
           </div>
-          <h2 className="text-2xl mb-4">요청이 접수되었습니다</h2>
-          <p className="text-gray-600 mb-8">
-            현재 주변에 즉시 출동 가능한 기사님이 없습니다.<br />
-            가까운 기사님을 찾는 중입니다.
+          <h2 className="text-2xl mb-4">접수되었습니다</h2>
+          <p className="mb-8 text-gray-600">
+            당장 출동 가능한 기사님이 부족할 수 있습니다.
+            <br />
+            순차적으로 연결되니 조금만 기다려 주세요.
           </p>
 
           <div className="mb-6 rounded-3xl border border-blue-100/80 bg-blue-50/90 p-6 text-left shadow-sm">
@@ -477,7 +505,7 @@ function RequestPage({
             <div className="space-y-3 text-sm">
               <div className="flex justify-between">
                 <span className="text-gray-600">위치</span>
-                <span>{formData.location || '서울 강남구'}</span>
+                <span>{formData.location || '경기 고양시'}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">에어컨 종류</span>
@@ -497,11 +525,11 @@ function RequestPage({
           <div className="space-y-3 mb-8">
             <div className="flex items-center gap-3 text-sm text-gray-600">
               <Clock className="w-5 h-5 text-blue-600" />
-              <span>평균 10분 내 기사님 연락</span>
+              <span>가능 시 빠르게 연락드릴 예정이에요</span>
             </div>
             <div className="flex items-center gap-3 text-sm text-gray-600">
               <Shield className="w-5 h-5 text-blue-600" />
-              <span>검증된 기사님만 배정</span>
+              <span>등록 기사님 순서로 배정</span>
             </div>
           </div>
 
@@ -529,15 +557,15 @@ function RequestPage({
 
       {/* Form */}
       <div className="w-full flex-1 px-6 py-8">
-        <h1 className="text-2xl mb-2">기사님 찾기</h1>
-        <p className="text-gray-600 mb-8">간단한 정보를 입력해주세요</p>
+        <h1 className="text-2xl mb-2">긴급 기사 매칭</h1>
+        <p className="mb-8 text-gray-600">방문 지역과 에어컨 상태를 알려 주세요</p>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Location */}
           <div>
             <label className="block mb-2">
               <MapPin className="inline w-5 h-5 mr-2 text-blue-600" />
-              서비스 위치
+              방문 지역
             </label>
             <select
               className="w-full rounded-2xl border border-gray-200 bg-white p-4 shadow-sm"
@@ -545,10 +573,10 @@ function RequestPage({
               onChange={(e) => setFormData({ ...formData, location: e.target.value })}
               required
             >
-              <option value="">지역을 선택하세요</option>
-              <option value="서울 강남구">서울 강남구</option>
-              <option value="서울 서초구">서울 서초구</option>
-              <option value="서울 송파구">서울 송파구</option>
+              <option value="">시·군을 선택하세요</option>
+              <option value="경기 고양시">경기 고양시</option>
+              <option value="경기 파주시">경기 파주시</option>
+              <option value="경기 포천시">경기 포천시</option>
             </select>
           </div>
 
@@ -617,7 +645,7 @@ function RequestPage({
                 }`}
               >
                 <div className="mb-1">예약</div>
-                <div className="text-sm text-gray-600">시간 지정</div>
+                <div className="text-sm text-gray-600">일정 조율</div>
               </button>
             </div>
           </div>
@@ -629,7 +657,7 @@ function RequestPage({
               <span className="text-2xl text-blue-600">30,000원</span>
             </div>
             <p className="text-sm text-gray-600">
-              * 실제 작업비는 현장 점검 후 안내되며, 승인 후 진행됩니다
+              * 실제 작업비는 현장 점검 후 안내드리며, 동의하신 항목만 진행합니다
             </p>
           </div>
 
@@ -638,11 +666,11 @@ function RequestPage({
             type="submit"
             className="w-full rounded-3xl bg-blue-600 py-4 text-white shadow-lg shadow-blue-900/25 transition-colors hover:bg-blue-700"
           >
-            기사님 찾기
+            접수·매칭 요청
           </button>
 
-          <p className="text-xs text-gray-500 text-center">
-            요청 즉시 가까운 기사님을 매칭해드립니다
+          <p className="text-center text-xs text-gray-500">
+            접수 후 순서에 따라 연결됩니다. 심야·주말은 대기가 길어질 수 있어요
           </p>
         </form>
       </div>
