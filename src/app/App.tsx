@@ -1,0 +1,651 @@
+import { useState, useEffect } from 'react';
+import { Clock, MapPin, Wrench, CreditCard, Shield, CheckCircle2, ArrowRight, User } from 'lucide-react';
+import { submitRequest } from '@/lib/api';
+import { AppShell } from '@/app/components/AppShell';
+
+export default function App() {
+  const [step, setStep] = useState<'home' | 'request'>('home');
+  const [formData, setFormData] = useState({
+    location: '',
+    acType: '',
+    issue: '',
+    urgency: 'now'
+  });
+
+  return (
+    <AppShell>
+      {step === 'home' ? (
+        <HomePage onRequestClick={() => setStep('request')} />
+      ) : (
+        <RequestPage
+          formData={formData}
+          setFormData={setFormData}
+          onBack={() => setStep('home')}
+        />
+      )}
+    </AppShell>
+  );
+}
+
+function MatchingScreen({
+  stage,
+  elapsedTime,
+  formData,
+  onCancel
+}: {
+  stage: string;
+  elapsedTime: number;
+  formData: any;
+  onCancel: () => void;
+}) {
+  return (
+    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-slate-50/90">
+      {/* Header */}
+      <div className="flex-shrink-0 border-b border-gray-200/80 bg-white/95 px-4 py-3 shadow-sm backdrop-blur-sm md:px-6 md:py-4">
+        <div className="flex w-full items-center justify-between">
+          <h1 className="text-base font-semibold md:text-lg">기사님 찾는 중</h1>
+          <button
+            onClick={onCancel}
+            className="text-sm text-gray-600 hover:text-gray-900"
+          >
+            취소
+          </button>
+        </div>
+        {/* Progress strip: keeps map block free for 지도 영역 */}
+        <div className="mt-3">
+          <div className="mb-1 flex items-center justify-between text-xs text-gray-600">
+            <span>매칭 진행 중</span>
+            <span>{elapsedTime}초</span>
+          </div>
+          <div className="h-1.5 w-full rounded-full bg-gray-200">
+            <div
+              className="h-1.5 rounded-full bg-blue-600 transition-all duration-1000"
+              style={{ width: `${Math.min((elapsedTime / 40) * 100, 100)}%` }}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Map Area — 메인: 최소 높이 보장 + 남은 공간 전부 */}
+      <div className="relative min-h-[min(58vh,520px)] flex-1 basis-0 bg-gradient-to-br from-sky-100 via-blue-50 to-emerald-50">
+        <div className="absolute inset-0">
+          {/* Mock Map Grid */}
+          <svg className="h-full w-full opacity-25">
+            <defs>
+              <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+                <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#94a3b8" strokeWidth="0.5"/>
+              </pattern>
+            </defs>
+            <rect width="100%" height="100%" fill="url(#grid)" />
+          </svg>
+
+          {/* Mock Roads */}
+          <svg className="absolute inset-0 w-full h-full opacity-30">
+            <line x1="0" y1="40%" x2="100%" y2="40%" stroke="#666" strokeWidth="3"/>
+            <line x1="0" y1="60%" x2="100%" y2="60%" stroke="#666" strokeWidth="2"/>
+            <line x1="30%" y1="0" x2="30%" y2="100%" stroke="#666" strokeWidth="2"/>
+            <line x1="70%" y1="0" x2="70%" y2="100%" stroke="#666" strokeWidth="3"/>
+          </svg>
+
+          {/* Search Radius */}
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div
+              className="rounded-full border-4 border-blue-400 bg-blue-100/20 animate-pulse"
+              style={{
+                width: stage === '15분' ? '200px' : '320px',
+                height: stage === '15분' ? '200px' : '320px',
+                transition: 'all 1s ease-out'
+              }}
+            />
+          </div>
+
+          {/* User Location (Center) */}
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="relative">
+              <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center shadow-lg border-4 border-white">
+                <User className="w-6 h-6 text-white" />
+              </div>
+              <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap text-sm bg-white px-3 py-1 rounded-full shadow-md">
+                {formData.location || '내 위치'}
+              </div>
+            </div>
+          </div>
+
+          {/* Searching Indicator */}
+          <div className="absolute top-3 left-1/2 z-10 -translate-x-1/2 px-3">
+            <div className="flex items-center gap-2 rounded-full bg-white/95 px-4 py-2 text-xs shadow-lg shadow-slate-900/10 backdrop-blur-sm md:text-sm">
+              <div className="h-2 w-2 animate-pulse rounded-full bg-blue-600" />
+              <span className="font-medium">{stage} 거리 내 검색 중</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Bottom sheet: 전체 높이 상한 + 내부만 스크롤 (고정 높이로 iOS 포함 동작 안정화) */}
+      <div className="flex max-h-[min(52vh,30rem)] w-full shrink-0 flex-col overflow-hidden rounded-t-[1.35rem] border-t border-gray-100 bg-white/98 shadow-[0_-10px_40px_-12px_rgb(15_23_42/0.15)]">
+        <div className="matching-bottom-scroll min-h-0 flex-1 overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch] touch-pan-y">
+          <div className="px-4 pt-3 md:px-6 md:pt-4">
+            <div className="mx-auto mb-3 h-1 w-10 shrink-0 rounded-full bg-gray-200/90 md:hidden" aria-hidden />
+
+            <h2 className="mb-2 text-lg font-semibold leading-snug text-gray-900 md:text-xl">
+              {stage} 거리 내 기사님을 찾고 있습니다
+            </h2>
+            <p className="mb-3 flex items-start gap-2 text-xs text-gray-600 md:text-sm">
+              <Shield className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" />
+              <span>
+                검증된 기사님만 매칭돼요.
+                {stage === '15분' ? ' 가까운 기사님을 찾는 중이에요.' : ' 조금만 기다려주세요.'}
+              </span>
+            </p>
+
+            <div className="mb-4 grid grid-cols-3 gap-2 rounded-2xl border border-blue-100/70 bg-blue-50/90 p-3 text-center text-[11px] shadow-sm md:gap-3 md:p-4 md:text-sm">
+              <div>
+                <div className="mb-0.5 text-[10px] text-gray-500 md:text-xs">검색</div>
+                <div className="font-semibold text-blue-600">{stage}</div>
+              </div>
+              <div className="border-x border-blue-100/80">
+                <div className="mb-0.5 text-[10px] text-gray-500 md:text-xs">에어컨</div>
+                <div className="font-medium text-gray-900">{formData.acType || '벽걸이'}</div>
+              </div>
+              <div>
+                <div className="mb-0.5 text-[10px] text-gray-500 md:text-xs">출장비</div>
+                <div className="font-semibold text-gray-900">3만원</div>
+              </div>
+            </div>
+
+            <div className="pb-4 space-y-2.5 rounded-2xl border border-gray-100 bg-slate-50/90 p-4 text-xs leading-relaxed text-gray-600 md:text-[13px]">
+              <p>
+                서비스 지역은 강남·서초·송파이며, 가정용 벽걸이·스탠드·2in1만 대상입니다.
+              </p>
+              <p>
+                현장에서 추가 비용이 생기면 <span className="font-medium text-gray-800">고객님 동의 후</span>에만 진행됩니다.
+              </p>
+              <p className="text-gray-500">
+                매칭이 길어질 경우 알림 문자로 상태를 안내드릴 수 있어요. (서비스 정책에 따라 변경될 수 있음)
+              </p>
+              <p className="pb-1 text-center text-[10px] text-gray-400 md:text-[11px]">
+                영역 안을 위·아래로 스크롤해 주세요
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex-shrink-0 border-t border-gray-100 bg-white px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom,0px))] md:px-6">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="w-full rounded-2xl bg-slate-100 py-3 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-200 md:py-3.5"
+          >
+            매칭 취소
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function HomePage({ onRequestClick }: { onRequestClick: () => void }) {
+  return (
+    <>
+      {/* Hero Section */}
+      <div className="bg-gradient-to-br from-blue-600 via-blue-600 to-blue-800 text-white">
+        <div className="w-full px-6 py-12">
+          <div className="mb-8">
+            <div className="inline-flex items-center gap-2 bg-white/20 rounded-full px-4 py-2 mb-4">
+              <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+              <span className="text-sm">지금 바로 이용 가능</span>
+            </div>
+            <h1 className="text-3xl mb-4">
+              에어컨 고장?<br />
+              지금 바로 기사님 연결
+            </h1>
+            <p className="text-blue-100 text-lg">
+              늦은 밤에도 빠른 매칭<br />
+              검증된 기사님이 바로 출동
+            </p>
+          </div>
+
+          <button
+            onClick={onRequestClick}
+            className="flex w-full items-center justify-center gap-2 rounded-3xl bg-white py-4 text-blue-600 shadow-lg shadow-blue-950/25 transition-colors hover:bg-blue-50"
+          >
+            <span className="text-lg">기사님 찾기</span>
+            <ArrowRight className="w-5 h-5" />
+          </button>
+
+          <div className="mt-8 grid grid-cols-3 gap-4 text-center">
+            <div>
+              <div className="text-2xl mb-1">5분</div>
+              <div className="text-sm text-blue-200">평균 매칭 시간</div>
+            </div>
+            <div>
+              <div className="text-2xl mb-1">24시간</div>
+              <div className="text-sm text-blue-200">연중무휴</div>
+            </div>
+            <div>
+              <div className="text-2xl mb-1">100%</div>
+              <div className="text-sm text-blue-200">검증된 기사</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* How It Works */}
+      <div className="w-full px-6 py-12">
+        <h2 className="text-2xl mb-8 text-center">이용 방법</h2>
+
+        <div className="space-y-6">
+          <div className="flex gap-4">
+            <div className="flex-shrink-0 w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center text-blue-600">
+              1
+            </div>
+            <div className="flex-1">
+              <h3 className="mb-1">고장 내용 입력</h3>
+              <p className="text-gray-600">위치, 에어컨 종류, 증상을 간단히 입력</p>
+            </div>
+          </div>
+
+          <div className="flex gap-4">
+            <div className="flex-shrink-0 w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center text-blue-600">
+              2
+            </div>
+            <div className="flex-1">
+              <h3 className="mb-1">예상 금액 확인</h3>
+              <p className="text-gray-600">평균가 기반 투명한 예상 비용 안내</p>
+            </div>
+          </div>
+
+          <div className="flex gap-4">
+            <div className="flex-shrink-0 w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center text-blue-600">
+              3
+            </div>
+            <div className="flex-1">
+              <h3 className="mb-1">기사님 매칭</h3>
+              <p className="text-gray-600">근처의 검증된 기사님과 즉시 연결</p>
+            </div>
+          </div>
+
+          <div className="flex gap-4">
+            <div className="flex-shrink-0 w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center text-blue-600">
+              4
+            </div>
+            <div className="flex-1">
+              <h3 className="mb-1">방문 및 수리</h3>
+              <p className="text-gray-600">기사님 방문 후 현장 점검 및 수리 진행</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Features */}
+      <div className="bg-white">
+        <div className="w-full px-6 py-12">
+          <h2 className="text-2xl mb-8 text-center">왜 에어컨콜이죠?</h2>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="rounded-3xl border border-gray-100 bg-slate-50/90 p-6 shadow-sm">
+              <Clock className="w-8 h-8 text-blue-600 mb-3" />
+              <h3 className="mb-2">즉시 매칭</h3>
+              <p className="text-sm text-gray-600">
+                견적 대기 없이<br />바로 연결
+              </p>
+            </div>
+
+            <div className="rounded-3xl border border-gray-100 bg-slate-50/90 p-6 shadow-sm">
+              <Shield className="w-8 h-8 text-blue-600 mb-3" />
+              <h3 className="mb-2">검증된 기사</h3>
+              <p className="text-sm text-gray-600">
+                자격증, 경력<br />사전 검증
+              </p>
+            </div>
+
+            <div className="rounded-3xl border border-gray-100 bg-slate-50/90 p-6 shadow-sm">
+              <CreditCard className="w-8 h-8 text-blue-600 mb-3" />
+              <h3 className="mb-2">투명한 가격</h3>
+              <p className="text-sm text-gray-600">
+                평균가 기반<br />명확한 안내
+              </p>
+            </div>
+
+            <div className="rounded-3xl border border-gray-100 bg-slate-50/90 p-6 shadow-sm">
+              <Wrench className="w-8 h-8 text-blue-600 mb-3" />
+              <h3 className="mb-2">야간 출동</h3>
+              <p className="text-sm text-gray-600">
+                밤 10시에도<br />긴급 대응
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Pricing */}
+      <div className="w-full px-6 py-12">
+        <h2 className="text-2xl mb-8 text-center">요금 안내</h2>
+
+        <div className="mb-4 rounded-3xl border border-gray-100 bg-white p-6 shadow-md shadow-slate-900/5">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg">기본 출장비</h3>
+            <span className="text-2xl text-blue-600">30,000원</span>
+          </div>
+          <div className="space-y-2 text-sm text-gray-600">
+            <div className="flex justify-between">
+              <span>평일 주간 (09:00-18:00)</span>
+              <span>기본요금</span>
+            </div>
+            <div className="flex justify-between">
+              <span>평일 야간 (18:00-22:00)</span>
+              <span>+10,000원</span>
+            </div>
+            <div className="flex justify-between">
+              <span>주말/공휴일</span>
+              <span>+15,000원</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-3xl border border-blue-100/80 bg-blue-50/90 p-6 shadow-sm">
+          <h3 className="text-lg mb-3">작업비 (예상)</h3>
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span className="text-gray-600">에어컨 점검/진단</span>
+              <span>무료</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">냉매 보충</span>
+              <span>50,000~80,000원</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">실외기 수리</span>
+              <span>80,000~150,000원</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">기타 부품 교체</span>
+              <span>현장 견적</span>
+            </div>
+          </div>
+          <div className="mt-4 pt-4 border-t border-blue-200">
+            <p className="text-sm text-gray-600 flex items-start gap-2">
+              <CheckCircle2 className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
+              <span>추가 작업은 고객님 승인 후에만 진행됩니다</span>
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* CTA */}
+      <div className="bg-gradient-to-br from-blue-600 via-blue-700 to-blue-900 text-white">
+        <div className="w-full px-6 py-12 text-center">
+          <h2 className="text-2xl mb-4">지금 바로 시작하세요</h2>
+          <p className="text-blue-100 mb-8">
+            늦은 밤 에어컨 고장도 걱정 없어요
+          </p>
+          <button
+            onClick={onRequestClick}
+            className="w-full rounded-3xl bg-white py-4 text-blue-600 shadow-lg shadow-blue-950/30 transition-colors hover:bg-blue-50"
+          >
+            기사님 찾기
+          </button>
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div className="bg-slate-900 text-gray-400">
+        <div className="w-full px-6 py-8">
+          <div className="mb-6">
+            <h3 className="text-white text-lg mb-2">에어컨콜</h3>
+            <p className="text-sm">긴급 에어컨 기사 매칭 서비스</p>
+          </div>
+          <div className="text-sm space-y-1">
+            <p>서비스 지역: 서울 강남/서초/송파</p>
+            <p>대상: 가정용 벽걸이/스탠드/2in1 에어컨</p>
+            <p>운영시간: 24시간 연중무휴</p>
+          </div>
+          <div className="mt-6 pt-6 border-t border-gray-800 text-xs">
+            <p>© 2026 에어컨콜. All rights reserved.</p>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function RequestPage({
+  formData,
+  setFormData,
+  onBack
+}: {
+  formData: any;
+  setFormData: (data: any) => void;
+  onBack: () => void;
+}) {
+  const [submitted, setSubmitted] = useState(false);
+  const [matchingStage, setMatchingStage] = useState<'searching15' | 'searching30' | 'waitlist' | 'matched'>('searching15');
+  const [elapsedTime, setElapsedTime] = useState(0);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await submitRequest({ ...formData, submittedAt: new Date().toISOString() });
+    setSubmitted(true);
+    setElapsedTime(0);
+    setMatchingStage('searching15');
+  };
+
+  // Matching timer logic
+  useEffect(() => {
+    if (!submitted) return;
+
+    const interval = setInterval(() => {
+      setElapsedTime(prev => {
+        const newTime = prev + 1;
+
+        if (newTime === 20) {
+          setMatchingStage('searching30');
+        } else if (newTime === 40) {
+          setMatchingStage('waitlist');
+        }
+
+        return newTime;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [submitted]);
+
+  if (submitted && matchingStage === 'searching15') {
+    return <MatchingScreen stage="15분" elapsedTime={elapsedTime} formData={formData} onCancel={onBack} />;
+  }
+
+  if (submitted && matchingStage === 'searching30') {
+    return <MatchingScreen stage="30분" elapsedTime={elapsedTime} formData={formData} onCancel={onBack} />;
+  }
+
+  if (submitted && matchingStage === 'waitlist') {
+    return (
+      <div className="flex min-h-full flex-1 items-center justify-center bg-slate-50/80 p-6">
+        <div className="w-full rounded-3xl border border-gray-100 bg-white p-8 text-center shadow-xl shadow-slate-900/10">
+          <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <Clock className="w-8 h-8 text-blue-600 animate-pulse" />
+          </div>
+          <h2 className="text-2xl mb-4">요청이 접수되었습니다</h2>
+          <p className="text-gray-600 mb-8">
+            현재 주변에 즉시 출동 가능한 기사님이 없습니다.<br />
+            가까운 기사님을 찾는 중입니다.
+          </p>
+
+          <div className="mb-6 rounded-3xl border border-blue-100/80 bg-blue-50/90 p-6 text-left shadow-sm">
+            <h3 className="mb-4">접수 내용</h3>
+            <div className="space-y-3 text-sm">
+              <div className="flex justify-between">
+                <span className="text-gray-600">위치</span>
+                <span>{formData.location || '서울 강남구'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">에어컨 종류</span>
+                <span>{formData.acType || '벽걸이'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">긴급도</span>
+                <span>{formData.urgency === 'now' ? '지금 바로' : '예약'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">예상 출장비</span>
+                <span className="text-blue-600">30,000원</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-3 mb-8">
+            <div className="flex items-center gap-3 text-sm text-gray-600">
+              <Clock className="w-5 h-5 text-blue-600" />
+              <span>평균 10분 내 기사님 연락</span>
+            </div>
+            <div className="flex items-center gap-3 text-sm text-gray-600">
+              <Shield className="w-5 h-5 text-blue-600" />
+              <span>검증된 기사님만 배정</span>
+            </div>
+          </div>
+
+          <button
+            onClick={onBack}
+            className="w-full rounded-3xl bg-slate-100 py-4 text-slate-700 transition-colors hover:bg-slate-200"
+          >
+            홈으로 돌아가기
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex min-h-full min-h-0 flex-1 flex-col bg-slate-50/80">
+      {/* Header */}
+      <div className="sticky top-0 z-10 border-b border-gray-200/80 bg-white/95 shadow-sm backdrop-blur-sm">
+        <div className="w-full px-6 py-4">
+          <button onClick={onBack} className="text-gray-600 hover:text-gray-900">
+            ← 뒤로
+          </button>
+        </div>
+      </div>
+
+      {/* Form */}
+      <div className="w-full flex-1 px-6 py-8">
+        <h1 className="text-2xl mb-2">기사님 찾기</h1>
+        <p className="text-gray-600 mb-8">간단한 정보를 입력해주세요</p>
+
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Location */}
+          <div>
+            <label className="block mb-2">
+              <MapPin className="inline w-5 h-5 mr-2 text-blue-600" />
+              서비스 위치
+            </label>
+            <select
+              className="w-full rounded-2xl border border-gray-200 bg-white p-4 shadow-sm"
+              value={formData.location}
+              onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+              required
+            >
+              <option value="">지역을 선택하세요</option>
+              <option value="서울 강남구">서울 강남구</option>
+              <option value="서울 서초구">서울 서초구</option>
+              <option value="서울 송파구">서울 송파구</option>
+            </select>
+          </div>
+
+          {/* AC Type */}
+          <div>
+            <label className="block mb-2">
+              <Wrench className="inline w-5 h-5 mr-2 text-blue-600" />
+              에어컨 종류
+            </label>
+            <div className="grid grid-cols-3 gap-3">
+              {['벽걸이', '스탠드', '2in1'].map(type => (
+                <button
+                  key={type}
+                  type="button"
+                  onClick={() => setFormData({ ...formData, acType: type })}
+                  className={`rounded-2xl border-2 p-4 transition-all ${
+                    formData.acType === type
+                      ? 'border-blue-600 bg-blue-50 shadow-sm'
+                      : 'border-gray-200 bg-white shadow-sm'
+                  }`}
+                >
+                  {type}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Issue */}
+          <div>
+            <label className="block mb-2">증상 (선택)</label>
+            <textarea
+              className="w-full resize-none rounded-2xl border border-gray-200 bg-white p-4 shadow-sm"
+              rows={4}
+              placeholder="예: 냉방이 안 되고 이상한 소리가 나요"
+              value={formData.issue}
+              onChange={(e) => setFormData({ ...formData, issue: e.target.value })}
+            />
+          </div>
+
+          {/* Urgency */}
+          <div>
+            <label className="block mb-2">
+              <Clock className="inline w-5 h-5 mr-2 text-blue-600" />
+              희망 시간
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setFormData({ ...formData, urgency: 'now' })}
+                className={`rounded-2xl border-2 p-4 transition-all ${
+                  formData.urgency === 'now'
+                    ? 'border-blue-600 bg-blue-50 shadow-sm'
+                    : 'border-gray-200 bg-white shadow-sm'
+                }`}
+              >
+                <div className="mb-1">지금 바로</div>
+                <div className="text-sm text-gray-600">즉시 매칭</div>
+              </button>
+              <button
+                type="button"
+                onClick={() => setFormData({ ...formData, urgency: 'scheduled' })}
+                className={`rounded-2xl border-2 p-4 transition-all ${
+                  formData.urgency === 'scheduled'
+                    ? 'border-blue-600 bg-blue-50 shadow-sm'
+                    : 'border-gray-200 bg-white shadow-sm'
+                }`}
+              >
+                <div className="mb-1">예약</div>
+                <div className="text-sm text-gray-600">시간 지정</div>
+              </button>
+            </div>
+          </div>
+
+          {/* Estimate */}
+          <div className="rounded-3xl border border-blue-100/80 bg-blue-50/90 p-6 shadow-sm">
+            <div className="flex justify-between items-center mb-3">
+              <span className="text-gray-700">예상 출장비</span>
+              <span className="text-2xl text-blue-600">30,000원</span>
+            </div>
+            <p className="text-sm text-gray-600">
+              * 실제 작업비는 현장 점검 후 안내되며, 승인 후 진행됩니다
+            </p>
+          </div>
+
+          {/* Submit */}
+          <button
+            type="submit"
+            className="w-full rounded-3xl bg-blue-600 py-4 text-white shadow-lg shadow-blue-900/25 transition-colors hover:bg-blue-700"
+          >
+            기사님 찾기
+          </button>
+
+          <p className="text-xs text-gray-500 text-center">
+            요청 즉시 가까운 기사님을 매칭해드립니다
+          </p>
+        </form>
+      </div>
+    </div>
+  );
+}
