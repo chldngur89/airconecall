@@ -2,7 +2,7 @@ import {
   FAQ_ITEMS,
   META_DESCRIPTION,
   SITE_NAME,
-  SITE_REPRESENTATIVE,
+  SITE_REPRESENTATIVES,
 } from './siteContent';
 
 /** JSON-LD @graph — Google Rich Results · 답변 엔진·생성형 인용 가능한 브랜드·지역 서비스 */
@@ -23,10 +23,10 @@ export function buildSchemaOrgGraph(siteOriginRaw: string) {
         logo: { '@type': 'ImageObject', url: `${base}/branding/icon-app.png` },
         image: [`${base}/branding/icon-app.png`, `${base}/branding/icon-mark.png`],
         description: META_DESCRIPTION,
-        founder: {
+        founder: SITE_REPRESENTATIVES.map((name) => ({
           '@type': 'Person',
-          name: SITE_REPRESENTATIVE,
-        },
+          name,
+        })),
         address: {
           '@type': 'PostalAddress',
           addressCountry: 'KR',

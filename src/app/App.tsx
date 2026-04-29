@@ -1,7 +1,15 @@
-import { useState, useEffect, useLayoutEffect } from 'react';
-import { Clock, MapPin, Wrench, CreditCard, Shield, CheckCircle2, ArrowRight, User } from 'lucide-react';
+import { useState, useEffect, useLayoutEffect, useRef } from 'react';
+import { Clock, MapPin, Wrench, CreditCard, Shield, CheckCircle2, ArrowRight, User, Ticket } from 'lucide-react';
 import { submitRequest } from '@/lib/api';
 import { AppShell } from '@/app/components/AppShell';
+import { MemberBenefitsDialog } from '@/app/components/MemberBenefitsDialog';
+import { MemberDashboardPage } from '@/app/components/MemberDashboardPage';
+import { MemberHeaderActions } from '@/app/components/MemberHeaderActions';
+import { MemberSignupFlowModal } from '@/app/components/MemberSignupFlowModal';
+import { PostSubmitStatusPage } from '@/app/components/PostSubmitStatusPage';
+import { WaitlistMemberUpsell } from '@/app/components/WaitlistMemberUpsell';
+import { readDemoMemberSignedUp } from '@/lib/memberRewards';
+import { HOME_BENEFITS_BUTTON } from '@/app/data/memberRewardsCopy';
 import { FAQ_ITEMS } from '@/seo/siteContent';
 import { scrollAppToTop } from '@/lib/scrollApp';
 
@@ -11,27 +19,87 @@ const MATCH_SWITCH_TO_WIDE_AT = 15;
 const MATCH_END_AT = 30;
 
 export default function App() {
-  const [step, setStep] = useState<'home' | 'request'>('home');
+  const [step, setStep] = useState<'home' | 'request' | 'memberDashboard'>('home');
   const [formData, setFormData] = useState({
     location: '',
     acType: '',
     issue: '',
     urgency: 'now'
   });
+  const [memberBenefitsOpen, setMemberBenefitsOpen] = useState(false);
+  const [memberSignupOpen, setMemberSignupOpen] = useState(false);
+  const [signupBookingRef, setSignupBookingRef] = useState<string | undefined>();
+  const [memberSignupDone, setMemberSignupDone] = useState(() => readDemoMemberSignedUp());
+  const [memberSignupEventId, setMemberSignupEventId] = useState(0);
+
+  const openSignup = (ref?: string) => {
+    setSignupBookingRef(ref);
+    setMemberSignupOpen(true);
+  };
+
+  const onMemberSignupOpenChange = (open: boolean) => {
+    setMemberSignupOpen(open);
+    if (!open) setSignupBookingRef(undefined);
+  };
 
   useLayoutEffect(() => {
     scrollAppToTop();
   }, [step]);
 
+  const memberModals = (
+    <>
+      <MemberBenefitsDialog
+        open={memberBenefitsOpen}
+        onOpenChange={setMemberBenefitsOpen}
+        onStartSignup={() => {
+          setMemberBenefitsOpen(false);
+          openSignup(undefined);
+        }}
+      />
+      <MemberSignupFlowModal
+        open={memberSignupOpen}
+        onOpenChange={onMemberSignupOpenChange}
+        bookingRef={signupBookingRef}
+        onComplete={() => {
+          setMemberSignupDone(true);
+          setMemberSignupEventId((prev) => prev + 1);
+        }}
+      />
+    </>
+  );
+
   return (
     <AppShell>
+      {memberModals}
       {step === 'home' ? (
-        <HomePage onRequestClick={() => setStep('request')} />
-      ) : (
+        <HomePage
+          onRequestClick={() => setStep('request')}
+          onOpenBenefits={() => setMemberBenefitsOpen(true)}
+          onOpenSignup={openSignup}
+          onOpenManage={() => setStep('memberDashboard')}
+        />
+      ) : step === 'request' ? (
         <RequestPage
           formData={formData}
           setFormData={setFormData}
           onBack={() => setStep('home')}
+          memberSignupDone={memberSignupDone}
+          memberSignupEventId={memberSignupEventId}
+          onOpenBenefits={() => setMemberBenefitsOpen(true)}
+          onOpenSignup={openSignup}
+          onOpenManage={() => setStep('memberDashboard')}
+        />
+      ) : (
+        <MemberDashboardPage
+          onGoHome={() => setStep('home')}
+          onOpenBenefits={() => setMemberBenefitsOpen(true)}
+          onViewFaq={() => {
+            setStep('home');
+            setTimeout(() => {
+              const faq = document.getElementById('faq');
+              if (faq) faq.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 60);
+          }}
         />
       )}
     </AppShell>
@@ -42,12 +110,20 @@ function MatchingScreen({
   stage,
   elapsedTime,
   formData,
-  onCancel
+  onCancel,
+  signupBookingRef,
+  onOpenBenefits,
+  onOpenSignup,
+  onOpenManage
 }: {
   stage: string;
   elapsedTime: number;
   formData: any;
   onCancel: () => void;
+  signupBookingRef?: string;
+  onOpenBenefits: () => void;
+  onOpenSignup: (bookingRef?: string) => void;
+  onOpenManage: () => void;
 }) {
   return (
     <div className="flex w-full min-h-full flex-col bg-slate-50/90">
@@ -56,13 +132,13 @@ function MatchingScreen({
         <div className="flex w-full items-center justify-between gap-3">
           <h1 className="text-base font-semibold md:text-lg">기사님 찾는 중</h1>
           <div className="flex shrink-0 items-center gap-3">
-            <span className="inline-flex shrink-0 rounded-xl border border-gray-300/95 bg-neutral-50 p-[5px] shadow-sm">
-              <img
-                src="/branding/icon-mark.png"
-                alt=""
-                className="h-6 max-w-[92px] w-auto rounded-lg object-contain opacity-95 sm:h-7 sm:max-w-[108px]"
-              />
-            </span>
+            <MemberHeaderActions
+              variant="onWhite"
+              signupBookingRef={signupBookingRef}
+              onOpenBenefits={onOpenBenefits}
+              onOpenSignup={onOpenSignup}
+              onOpenManage={onOpenManage}
+            />
             <button
               onClick={onCancel}
               className="text-sm text-gray-600 hover:text-gray-900"
@@ -208,11 +284,29 @@ function MatchingScreen({
   );
 }
 
-function HomePage({ onRequestClick }: { onRequestClick: () => void }) {
+function HomePage({
+  onRequestClick,
+  onOpenBenefits,
+  onOpenSignup,
+  onOpenManage
+}: {
+  onRequestClick: () => void;
+  onOpenBenefits: () => void;
+  onOpenSignup: (bookingRef?: string) => void;
+  onOpenManage: () => void;
+}) {
   return (
     <main id="primary" lang="ko" className="min-w-0">
       {/* Hero Section */}
-      <div className="bg-gradient-to-br from-blue-600 via-blue-600 to-blue-800 text-white">
+      <div className="relative bg-gradient-to-br from-blue-600 via-blue-600 to-blue-800 text-white">
+        <div className="absolute right-4 top-4 z-10 md:right-8 md:top-5">
+          <MemberHeaderActions
+            variant="onBlue"
+            onOpenBenefits={onOpenBenefits}
+            onOpenSignup={onOpenSignup}
+            onOpenManage={onOpenManage}
+          />
+        </div>
         <div className="w-full px-6 py-12">
           <div className="mb-8">
             <div className="mb-6 flex justify-center md:justify-start">
@@ -450,13 +544,30 @@ function HomePage({ onRequestClick }: { onRequestClick: () => void }) {
         </div>
       </div>
 
+      {/* 회원 혜택 — 메인 플로우 외 선택 진입 (플랜 Phase 1) */}
+      <div className="border-t border-gray-100 bg-white px-6 py-8">
+        <button
+          type="button"
+          onClick={onOpenBenefits}
+          className="flex w-full items-center justify-center gap-2 rounded-2xl border border-gray-200/95 bg-[#f7f8f9] py-4 text-base font-medium text-gray-900 shadow-sm transition-colors hover:bg-gray-50"
+        >
+          <Ticket className="h-5 w-5 shrink-0 text-blue-600" aria-hidden />
+          {HOME_BENEFITS_BUTTON}
+        </button>
+      </div>
+
       {/* Footer */}
       <footer className="bg-slate-900 text-gray-400">
         <div className="w-full px-6 py-8">
           <div className="mb-6">
             <h3 className="mb-1 text-lg text-white">에어컨콜</h3>
             <p className="text-sm text-gray-300">긴급 에어컨 출동·기사 매칭</p>
-            <p className="mt-3 text-sm text-gray-300">대표 <span className="text-white">최병성</span></p>
+            <p className="mt-3 text-sm text-gray-300">
+              대표자 :{' '}
+              <span className="text-white">최병성</span>
+              <span className="text-gray-400">, </span>
+              <span className="text-white">최우혁</span>
+            </p>
           </div>
           <div className="space-y-2 text-sm leading-relaxed">
             <p>
@@ -487,15 +598,27 @@ function HomePage({ onRequestClick }: { onRequestClick: () => void }) {
 function RequestPage({
   formData,
   setFormData,
-  onBack
+  onBack,
+  memberSignupDone,
+  memberSignupEventId,
+  onOpenBenefits,
+  onOpenSignup,
+  onOpenManage
 }: {
   formData: any;
   setFormData: (data: any) => void;
   onBack: () => void;
+  memberSignupDone: boolean;
+  memberSignupEventId: number;
+  onOpenBenefits: () => void;
+  onOpenSignup: (bookingRef?: string) => void;
+  onOpenManage: () => void;
 }) {
   const [submitted, setSubmitted] = useState(false);
   const [matchingStage, setMatchingStage] = useState<'searching15' | 'searching30' | 'waitlist' | 'matched'>('searching15');
   const [elapsedTime, setElapsedTime] = useState(0);
+  const [postSubmitSource, setPostSubmitSource] = useState<'contact' | 'member' | null>(null);
+  const handledSignupEventRef = useRef(0);
 
   useLayoutEffect(() => {
     scrollAppToTop();
@@ -530,18 +653,87 @@ function RequestPage({
     return () => clearInterval(interval);
   }, [submitted]);
 
+  useEffect(() => {
+    if (memberSignupEventId <= handledSignupEventRef.current) return;
+    handledSignupEventRef.current = memberSignupEventId;
+    if (submitted && matchingStage === 'waitlist') {
+      setPostSubmitSource('member');
+    }
+  }, [memberSignupEventId, submitted, matchingStage]);
+
+  const memberHeaderCallbacks = {
+    onOpenBenefits,
+    onOpenSignup,
+    onOpenManage
+  };
+  const isMemberSignedIn = memberSignupDone || readDemoMemberSignedUp();
+  const goHomeOrManage = () => {
+    if (isMemberSignedIn) onOpenManage();
+    else onBack();
+  };
+
+  const moveToFaqSection = () => {
+    onBack();
+    setTimeout(() => {
+      const faq = document.getElementById('faq');
+      if (faq) {
+        faq.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } else {
+        window.location.hash = 'faq';
+      }
+    }, 60);
+  };
+
+  if (submitted && matchingStage === 'waitlist' && postSubmitSource) {
+    return (
+      <PostSubmitStatusPage
+        source={postSubmitSource}
+        isMemberSignedIn={isMemberSignedIn}
+        onPrimaryAction={goHomeOrManage}
+        onViewFaq={moveToFaqSection}
+        onOpenBenefits={onOpenBenefits}
+      />
+    );
+  }
+
   if (submitted && matchingStage === 'searching15') {
-    return <MatchingScreen stage="15분" elapsedTime={elapsedTime} formData={formData} onCancel={onBack} />;
+    return (
+      <MatchingScreen
+        stage="15분"
+        elapsedTime={elapsedTime}
+        formData={formData}
+        onCancel={onBack}
+        {...memberHeaderCallbacks}
+      />
+    );
   }
 
   if (submitted && matchingStage === 'searching30') {
-    return <MatchingScreen stage="30분" elapsedTime={elapsedTime} formData={formData} onCancel={onBack} />;
+    return (
+      <MatchingScreen
+        stage="30분"
+        elapsedTime={elapsedTime}
+        formData={formData}
+        onCancel={onBack}
+        {...memberHeaderCallbacks}
+      />
+    );
   }
 
   if (submitted && matchingStage === 'waitlist') {
     return (
-      <div className="flex min-h-full flex-1 items-center justify-center bg-slate-50/80 p-6">
-        <div className="w-full rounded-3xl border border-gray-100 bg-white p-8 text-center shadow-xl shadow-slate-900/10">
+      <div className="flex min-h-full min-h-0 flex-1 flex-col bg-slate-50/80">
+        <div className="sticky top-0 z-10 flex w-full shrink-0 items-center justify-end gap-3 border-b border-gray-200/80 bg-white/95 px-4 py-4 pt-[max(1rem,env(safe-area-inset-top,0px))] shadow-sm backdrop-blur-sm md:px-6">
+          <MemberHeaderActions
+            variant="onWhite"
+            signupBookingRef="demo-waitlist"
+            onOpenBenefits={onOpenBenefits}
+            onOpenSignup={onOpenSignup}
+            onOpenManage={onOpenManage}
+          />
+        </div>
+        <div className="flex min-h-0 flex-1 flex-col items-stretch justify-start overflow-y-auto px-6 pb-[max(1rem,env(safe-area-inset-bottom,0px))] pt-6 sm:items-center sm:justify-center sm:pb-10 sm:pt-10">
+          <div className="mx-auto w-full max-w-md rounded-3xl border border-gray-100 bg-white px-6 py-10 text-center shadow-xl shadow-slate-900/10 sm:p-10">
           <div className="mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-2xl border border-blue-100/90 bg-blue-50 shadow-sm">
             <Clock className="h-8 w-8 animate-pulse text-blue-600" />
           </div>
@@ -574,7 +766,7 @@ function RequestPage({
             </div>
           </div>
 
-          <div className="space-y-3 mb-8">
+          <div className="space-y-3 mb-6">
             <div className="flex items-center gap-3 text-sm text-gray-600">
               <Clock className="w-5 h-5 text-blue-600" />
               <span>가능 시 빠르게 연락드릴 예정이에요</span>
@@ -585,12 +777,20 @@ function RequestPage({
             </div>
           </div>
 
+          <WaitlistMemberUpsell
+            signupComplete={memberSignupDone}
+            onOpenSignup={() => onOpenSignup('demo-waitlist')}
+            onContactSavedSuccess={() => setPostSubmitSource('contact')}
+          />
+
           <button
-            onClick={onBack}
-            className="w-full rounded-3xl bg-slate-100 py-4 text-slate-700 transition-colors hover:bg-slate-200"
+            type="button"
+            onClick={goHomeOrManage}
+            className="mt-8 w-full rounded-3xl bg-slate-100 py-4 text-slate-700 transition-colors hover:bg-slate-200"
           >
-            홈으로 돌아가기
+            {isMemberSignedIn ? '회원관리로 이동' : '홈으로 돌아가기'}
           </button>
+          </div>
         </div>
       </div>
     );
@@ -604,13 +804,12 @@ function RequestPage({
           <button onClick={onBack} className="text-gray-600 hover:text-gray-900">
             ← 뒤로
           </button>
-          <span className="inline-flex shrink-0 rounded-xl border border-gray-200 bg-neutral-50 p-[5px] shadow-sm">
-            <img
-              src="/branding/icon-mark.png"
-              alt=""
-              className="h-7 max-w-[110px] w-auto rounded-lg object-contain opacity-95"
-            />
-          </span>
+          <MemberHeaderActions
+            variant="onWhite"
+            onOpenBenefits={onOpenBenefits}
+            onOpenSignup={onOpenSignup}
+            onOpenManage={onOpenManage}
+          />
         </div>
       </div>
 

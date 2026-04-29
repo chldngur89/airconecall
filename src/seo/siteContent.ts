@@ -1,13 +1,15 @@
 /** 페이지·FAQ·메타 카피 — SEO 스키마(siteContent)·JSON-LD(schema)와 동기화 유지 */
 export const SITE_NAME = '에어컨콜';
-export const SITE_REPRESENTATIVE = '최병성';
+/** 대표자 (표기 순) */
+export const SITE_REPRESENTATIVES = ['최병성', '최우혁'] as const;
+export const SITE_REPRESENTATIVE_LINE = SITE_REPRESENTATIVES.join(', ');
 export const AREA_LABEL = '경기 고양시·파주시·포천시';
 export const REGIONS_DETAIL = ['고양시', '파주시', '포천시'] as const;
 
 export const META_TITLE =
   '에어컨콜 | 고양·파주·포천 긴급 에어컨 출동 · 기사 매칭 · 점검·수리';
 export const META_DESCRIPTION =
-  '고양시·파주시·포천시 에어컨 고장 긴급 접수. 벽걸이·스탠드·2in1 점검·수리, 등록 파트너 기사 매칭. 대표 최병성 운영.';
+  `고양시·파주시·포천시 에어컨 고장 긴급 접수. 벽걸이·스탠드·2in1 점검·수리, 등록 파트너 기사 매칭. 대표자 ${SITE_REPRESENTATIVE_LINE} 운영.`;
 
 export const KEYWORDS_META = [
   '에어컨콜',
