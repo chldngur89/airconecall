@@ -344,8 +344,8 @@ function HomePage({
 
           <div className="mt-8 grid grid-cols-3 gap-4 text-center">
             <div>
-              <div className="text-2xl mb-1">5분</div>
-              <div className="text-sm text-blue-200">매칭 대기 시간</div>
+              <div className="text-2xl mb-1">1분내</div>
+              <div className="text-sm text-blue-200">매칭</div>
             </div>
             <div>
               <div className="text-2xl mb-1">24시간</div>
