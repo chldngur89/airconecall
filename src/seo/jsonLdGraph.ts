@@ -11,6 +11,7 @@ export function buildSchemaOrgGraph(siteOriginRaw: string) {
   const orgId = `${base}/#organization`;
   const websiteId = `${base}/#website`;
   const webPageId = `${base}/#webpage`;
+  const serviceId = `${base}/#service`;
 
   return {
     '@context': 'https://schema.org',
@@ -91,7 +92,8 @@ export function buildSchemaOrgGraph(siteOriginRaw: string) {
         '@type': ['WebPage', 'FAQPage'],
         '@id': webPageId,
         url: `${base}/`,
-        name: META_DESCRIPTION.slice(0, 72),
+        name: SITE_NAME,
+        headline: META_DESCRIPTION.slice(0, 72),
         isPartOf: { '@id': websiteId },
         about: { '@id': orgId },
         description: META_DESCRIPTION,
@@ -108,6 +110,19 @@ export function buildSchemaOrgGraph(siteOriginRaw: string) {
           name: item.question,
           acceptedAnswer: { '@type': 'Answer', text: item.answer },
         })),
+      },
+      {
+        '@type': 'Service',
+        '@id': serviceId,
+        name: '긴급 에어컨 접수·매칭 서비스',
+        provider: { '@id': orgId },
+        areaServed: ['경기 고양시', '경기 파주시', '경기 포천시'],
+        serviceType: '가정용 에어컨 점검·수리 및 등록 파트너 기사 매칭',
+        availableChannel: {
+          '@type': 'ServiceChannel',
+          serviceUrl: `${base}/`,
+          availableLanguage: ['ko-KR'],
+        },
       },
     ],
   };

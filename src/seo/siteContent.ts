@@ -7,9 +7,9 @@ export const AREA_LABEL = '경기 고양시·파주시·포천시';
 export const REGIONS_DETAIL = ['고양시', '파주시', '포천시'] as const;
 
 export const META_TITLE =
-  '에어컨콜 | 고양·파주·포천 긴급 에어컨 출동 · 기사 매칭 · 점검·수리';
+  '에어컨콜 | 고양·파주·포천 긴급 에어컨 출동 · 기사 매칭 · 점검·수리 · 회원혜택';
 export const META_DESCRIPTION =
-  `고양시·파주시·포천시 에어컨 고장 긴급 접수. 벽걸이·스탠드·2in1 점검·수리, 등록 파트너 기사 매칭. 대표자 ${SITE_REPRESENTATIVE_LINE} 운영.`;
+  `고양시·파주시·포천시 에어컨 고장 긴급 접수. 벽걸이·스탠드·2in1 점검·수리, 등록 파트너 기사 매칭과 회원 리워드 혜택 안내. 대표자 ${SITE_REPRESENTATIVE_LINE} 운영.`;
 
 export const KEYWORDS_META = [
   '에어컨콜',
@@ -34,7 +34,7 @@ export const FAQ_ITEMS: ReadonlyArray<{ question: string; answer: string }> = [
   {
     question: '긴급 매칭은 어떻게 진행되나요?',
     answer:
-      '증상과 방문 지역 등을 접수하면 수동 순서대로 매칭하며, 15분·30분 검색 단계처럼 기사님이 가시는 구역을 순차적으로 넓히는 과정 보여 드립니다. 바로 전화가 안 올 경우 대기 상태로 순차 안내해 든다는 점을 알려 두었습니다.',
+      '증상과 방문 지역 등을 접수하면 수동 순서대로 매칭하며, 15분·30분 검색 단계처럼 기사님이 가시는 구역을 순차적으로 넓히는 과정을 보여 드립니다. 바로 전화가 안 올 경우 대기 상태에서 순차 안내해 드립니다.',
   },
   {
     question: '비용은 언제까지 알 수 있나요?',
@@ -55,6 +55,11 @@ export const FAQ_ITEMS: ReadonlyArray<{ question: string; answer: string }> = [
     question: '등록 파트너 기사만 연결된다는 말은 무슨 뜻인가요?',
     answer:
       '사전에 등록되어 검증 절차를 거친 기사님과만 순서 매칭을 시도함을 원칙으로 안내합니다. 동시 접수 증가 시 대기 시간이 길어질 수 있습니다.',
+  },
+  {
+    question: '회원 가입을 하면 어떤 혜택이 있나요?',
+    answer:
+      '비회원 접수는 그대로 가능하며, 회원으로 등록하면 출동·재이용·추천 관련 리워드 안내를 받을 수 있습니다. 실제 혜택 조건과 금액은 서비스 정책에 따라 안내됩니다.',
   },
 ];
 

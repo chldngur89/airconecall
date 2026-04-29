@@ -1,13 +1,14 @@
 import { useMemo, useState } from 'react';
-import { CircleHelp, Gift, Home, PencilLine, ShieldCheck, Sparkles, Ticket } from 'lucide-react';
+import { ArrowLeft, CircleHelp, Gift, Home, PencilLine, ShieldCheck, Sparkles, Ticket, Wrench } from 'lucide-react';
 
 type Props = {
   onGoHome: () => void;
+  onGoRequest: () => void;
   onOpenBenefits: () => void;
   onViewFaq: () => void;
 };
 
-export function MemberDashboardPage({ onGoHome, onOpenBenefits, onViewFaq }: Props) {
+export function MemberDashboardPage({ onGoHome, onGoRequest, onOpenBenefits, onViewFaq }: Props) {
   const [name, setName] = useState('에어컨콜 회원');
   const [phone, setPhone] = useState('010-1234-5678');
   const [marketingSms, setMarketingSms] = useState(true);
@@ -26,6 +27,25 @@ export function MemberDashboardPage({ onGoHome, onOpenBenefits, onViewFaq }: Pro
   return (
     <main className="min-h-full bg-slate-50/80 px-6 py-6 sm:py-8">
       <div className="mx-auto w-full max-w-2xl space-y-4">
+        <section className="flex items-center justify-between gap-2">
+          <button
+            type="button"
+            onClick={onGoHome}
+            className="inline-flex items-center gap-1 rounded-xl bg-white px-3 py-2 text-sm text-gray-700 shadow-sm"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            뒤로가기
+          </button>
+          <button
+            type="button"
+            onClick={onGoRequest}
+            className="inline-flex items-center gap-1 rounded-xl bg-blue-600 px-3 py-2 text-sm font-medium text-white shadow-sm"
+          >
+            <Wrench className="h-4 w-4" />
+            긴급매칭으로
+          </button>
+        </section>
+
         <section className="rounded-3xl border border-blue-100/80 bg-gradient-to-br from-blue-600 to-blue-700 px-5 py-6 text-white shadow-lg shadow-blue-900/20">
           <p className="mb-2 flex items-center gap-2 text-sm text-blue-100">
             <ShieldCheck className="h-4 w-4" />
@@ -41,7 +61,11 @@ export function MemberDashboardPage({ onGoHome, onOpenBenefits, onViewFaq }: Pro
             <p className="mt-1 text-lg font-semibold text-gray-900">{stats.totalReward.toLocaleString()}원</p>
           </article>
           <article className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-            <p className="text-xs text-gray-500">이번 달 예상 혜택</p>
+            <p className="text-xs text-gray-500">
+              이번 달
+              <br />
+              예상 혜택
+            </p>
             <p className="mt-1 text-lg font-semibold text-blue-600">{stats.monthlyExpected.toLocaleString()}원</p>
           </article>
           <article className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
@@ -68,7 +92,8 @@ export function MemberDashboardPage({ onGoHome, onOpenBenefits, onViewFaq }: Pro
             최근 활동
           </h2>
           <div className="rounded-xl border border-blue-100 bg-blue-50/60 p-4 text-sm text-gray-700">
-            최근 접수: 경기 파주시 스탠드 에어컨 · 기사 배정 대기 중
+            <p className="font-medium text-gray-800">최근 접수:</p>
+            <p className="mt-1">경기 파주시 스탠드 에어컨 · 기사 배정 대기 중</p>
           </div>
         </section>
 

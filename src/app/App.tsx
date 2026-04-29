@@ -88,10 +88,12 @@ export default function App() {
           onOpenBenefits={() => setMemberBenefitsOpen(true)}
           onOpenSignup={openSignup}
           onOpenManage={() => setStep('memberDashboard')}
+          onGoMemberDashboard={() => setStep('memberDashboard')}
         />
       ) : (
         <MemberDashboardPage
           onGoHome={() => setStep('home')}
+          onGoRequest={() => setStep('request')}
           onOpenBenefits={() => setMemberBenefitsOpen(true)}
           onViewFaq={() => {
             setStep('home');
@@ -603,7 +605,8 @@ function RequestPage({
   memberSignupEventId,
   onOpenBenefits,
   onOpenSignup,
-  onOpenManage
+  onOpenManage,
+  onGoMemberDashboard
 }: {
   formData: any;
   setFormData: (data: any) => void;
@@ -613,6 +616,7 @@ function RequestPage({
   onOpenBenefits: () => void;
   onOpenSignup: (bookingRef?: string) => void;
   onOpenManage: () => void;
+  onGoMemberDashboard: () => void;
 }) {
   const [submitted, setSubmitted] = useState(false);
   const [matchingStage, setMatchingStage] = useState<'searching15' | 'searching30' | 'waitlist' | 'matched'>('searching15');
@@ -668,7 +672,7 @@ function RequestPage({
   };
   const isMemberSignedIn = memberSignupDone || readDemoMemberSignedUp();
   const goHomeOrManage = () => {
-    if (isMemberSignedIn) onOpenManage();
+    if (isMemberSignedIn) onGoMemberDashboard();
     else onBack();
   };
 
@@ -737,12 +741,7 @@ function RequestPage({
           <div className="mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-2xl border border-blue-100/90 bg-blue-50 shadow-sm">
             <Clock className="h-8 w-8 animate-pulse text-blue-600" />
           </div>
-          <h2 className="text-2xl mb-4">접수되었습니다</h2>
-          <p className="mb-8 text-gray-600">
-            당장 출동 가능한 기사님이 부족할 수 있습니다.
-            <br />
-            순차적으로 연결되니 조금만 기다려 주세요.
-          </p>
+          <h2 className="mb-8 text-2xl">접수되었습니다</h2>
 
           <div className="mb-6 rounded-3xl border border-blue-100/80 bg-blue-50/90 p-6 text-left shadow-sm">
             <h3 className="mb-4">접수 내용</h3>

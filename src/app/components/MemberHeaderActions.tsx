@@ -61,39 +61,40 @@ export function MemberHeaderActions({
         />
       </button>
 
-      {enrolled ? (
-        <button
-          type="button"
-          className={menuBtn}
-          onClick={onOpenManage}
-          aria-label="회원 관리 열기"
-          title="회원 관리"
-        >
-          <Menu className="size-5" strokeWidth={2.25} />
-        </button>
-      ) : (
-        <DropdownMenu modal={false}>
-          <DropdownMenuTrigger asChild>
-            <button type="button" className={menuBtn} aria-label="메뉴 열기">
-              <Menu className="size-5" strokeWidth={2.25} />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="min-w-[12rem]" sideOffset={6}>
-            <DropdownMenuItem
-              className="cursor-pointer"
-              onClick={() => onOpenBenefits()}
-            >
-              회원 혜택 · 출동 쿠폰 안내
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              className="cursor-pointer"
-              onClick={() => onOpenSignup(signupBookingRef)}
-            >
-              회원 가입
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      )}
+      <DropdownMenu modal={false}>
+        <DropdownMenuTrigger asChild>
+          <button type="button" className={menuBtn} aria-label="메뉴 열기">
+            <Menu className="size-5" strokeWidth={2.25} />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="min-w-[12rem]" sideOffset={6}>
+          {enrolled ? (
+            <>
+              <DropdownMenuItem disabled className="text-xs text-gray-500">
+                리워드·사용량·정보 수정 확인
+              </DropdownMenuItem>
+              <DropdownMenuItem className="cursor-pointer" onClick={() => onOpenManage()}>
+                회원 관리
+              </DropdownMenuItem>
+            </>
+          ) : (
+            <>
+              <DropdownMenuItem
+                className="cursor-pointer"
+                onClick={() => onOpenBenefits()}
+              >
+                회원 혜택 · 출동 쿠폰 안내
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="cursor-pointer"
+                onClick={() => onOpenSignup(signupBookingRef)}
+              >
+                회원 가입
+              </DropdownMenuItem>
+            </>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   );
 }
